@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2019",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "strict": true,
@@ -10,7 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "outDir": "./cjs",
-    "jsx": "preserve"
+    "jsx": "react"
   },
   "include": ["src"],
   "exclude": ["node_modules", "cjs"]

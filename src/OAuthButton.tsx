@@ -1,5 +1,5 @@
 import Button from 'payload/dist/admin/components/elements/Button'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 export default function OAuthButton() {
   useEffect(() => {
