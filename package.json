@@ -7,6 +7,7 @@
   "scripts": {
     "clean": "rm -rf cjs",
     "build": "tsc",
+    "test": "echo 'no tests'",
     "esbuild": "esbuild ./src/index.ts --bundle --outdir=cjs --format=cjs --target=node18 --platform=node --external:react --external:axios --external:passport --external:payload --external:express-session"
   },
   "exports": {
