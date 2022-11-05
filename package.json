@@ -23,8 +23,8 @@
   "dependencies": {
     "@bothrs/util": "^3",
     "@types/express-session": "^1",
-    "@types/passport-oauth2": "^1",
     "@types/passport": "^1",
+    "@types/passport-oauth2": "^1",
     "axios": "^1",
     "express-session": "^1",
     "passport-oauth2": "^1"
