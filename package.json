@@ -1,6 +1,6 @@
 {
-  "name": "payload-plugin-oauth2",
-  "version": "0.1.3",
+  "name": "payload-plugin-oauth",
+  "version": "0.1.4",
   "license": "MIT",
   "main": "cjs/index.ts",
   "types": "cjs/index.d.ts",
