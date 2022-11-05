@@ -1,0 +1,51 @@
+{
+  "name": "payload-plugin-oauth2",
+  "version": "0.1.0",
+  "license": "MIT",
+  "main": "cjs/index.ts",
+  "types": "cjs/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf cjs",
+    "build": "tsc",
+    "esbuild": "esbuild ./src/index.ts --bundle --outdir=cjs --format=cjs --target=node18 --platform=node --external:react --external:axios --external:passport --external:payload --external:express-session"
+  },
+  "exports": {
+    ".": {
+      "types": "./cjs/index.d.ts",
+      "default": "./cjs/index.js"
+    },
+    "./cjs/*": "./cjs/*"
+  },
+  "files": [
+    "cjs"
+  ],
+  "dependencies": {
+    "@bothrs/util": "^3",
+    "@types/express-session": "^1",
+    "@types/passport-oauth2": "^1",
+    "@types/passport": "^1",
+    "axios": "^1",
+    "express-session": "^1",
+    "passport-oauth2": "^1"
+  },
+  "devDependencies": {
+    "passport": "^0.6",
+    "payload": "^1",
+    "react": "^18",
+    "typescript": "^4"
+  },
+  "peerDependencies": {
+    "passport": "^0.6",
+    "payload": "^1",
+    "react": "^18"
+  },
+  "author": "Thomas Ghysels <info@thomasg.be>",
+  "homepage": "https://github.com/thgh/payload-plugin-oauth2",
+  "bugs": {
+    "url": "https://github.com/thgh/payload-plugin-oauth2/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thgh/payload-plugin-oauth2"
+  }
+}

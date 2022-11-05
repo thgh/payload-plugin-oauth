@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "strict": true,
+    "declaration": true,
+    "module": "CommonJS",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "outDir": "./cjs",
+    "jsx": "preserve"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "cjs"]
+}
