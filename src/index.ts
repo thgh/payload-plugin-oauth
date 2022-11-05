@@ -123,7 +123,12 @@ function oAuthPluginServer(
   // Passport strategy
   const strategy = new OAuth2Strategy(
     options,
-    async (accessToken: string, refreshToken: string, cb: VerifyCallback) => {
+    async (
+      accessToken: string,
+      refreshToken: string,
+      profile: {},
+      cb: VerifyCallback
+    ) => {
       try {
         // Get the userinfo
         const user = await options.userinfo?.(accessToken)
