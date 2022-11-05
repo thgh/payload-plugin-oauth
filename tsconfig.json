@@ -7,7 +7,7 @@
     "declaration": true,
     "module": "CommonJS",
     "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "./cjs",
     "jsx": "react"
