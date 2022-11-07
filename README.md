@@ -3,11 +3,11 @@
 <a href="LICENSE">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen.svg" alt="Software License" />
 </a>
-<a href="https://github.com/thgh/payload-plugin-oauth2/issues">
-  <img src="https://img.shields.io/github/issues/thgh/payload-plugin-oauth2.svg" alt="Issues" />
+<a href="https://github.com/thgh/payload-plugin-oauth/issues">
+  <img src="https://img.shields.io/github/issues/thgh/payload-plugin-oauth.svg" alt="Issues" />
 </a>
-<a href="https://npmjs.org/package/payload-plugin-oauth2">
-  <img src="https://img.shields.io/npm/v/payload-plugin-oauth2.svg?style=flat-squar" alt="NPM" />
+<a href="https://npmjs.org/package/payload-plugin-oauth">
+  <img src="https://img.shields.io/npm/v/payload-plugin-oauth.svg?style=flat-squar" alt="NPM" />
 </a>
 
 ## Features
@@ -19,16 +19,16 @@
 ## Installation
 
 ```
-npm install payload-plugin-oauth2
+npm install payload-plugin-oauth
 # or
-yarn add payload-plugin-oauth2
+yarn add payload-plugin-oauth
 ```
 
 ## Usage
 
 ```js
 // payload.config.ts
-import { oAuthPlugin } from 'payload-plugin-oauth2'
+import { oAuthPlugin } from 'payload-plugin-oauth'
 
 export default buildConfig({
   serverURL: process.env.SERVER_URL,
@@ -39,7 +39,7 @@ export default buildConfig({
       clientSecret: process.env.CLIENT_SECRET,
       authorizationURL: process.env.OAUTH_SERVER + '/oauth/authorize',
       tokenURL: process.env.OAUTH_SERVER + '/oauth/token',
-      callbackURL: process.env.SERVER_URL + CALLBACK_PATH,
+      callbackURL: process.env.SERVER_URL + '/oauth/callback',
       scope: 'basic',
       async userinfo(accessToken) {
         const { data: user } = await axios.get(OAUTH_SERVER + '/oauth/me', {

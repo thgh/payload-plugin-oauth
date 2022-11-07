@@ -23,7 +23,7 @@ const CLIENTSIDE = typeof session !== 'function'
  *     clientSecret: OAUTH_CLIENT_SECRET,
  *     authorizationURL: OAUTH_SERVER + '/oauth/authorize',
  *     tokenURL: OAUTH_SERVER + '/oauth/token',
- *     callbackURL: ORIGIN + CALLBACK_PATH,
+ *     callbackURL: ORIGIN + '/oauth/callback',
  *     scope: 'basic',
  *     async userinfo(accessToken) {
  *       const { data: user } = await axios.get(OAUTH_SERVER + '/oauth/me', {
