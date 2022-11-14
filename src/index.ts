@@ -4,7 +4,7 @@ import payload from 'payload'
 import { Config } from 'payload/config'
 import session from 'express-session'
 import passport from 'passport'
-import { TextField } from 'payload/types'
+import { Field } from 'payload/types'
 import OAuthButton from './OAuthButton'
 import type { oAuthPluginOptions } from './types'
 
@@ -42,44 +42,52 @@ const CLIENTSIDE = typeof session !== 'function'
  * }
  * ```
  */
+
+
+// Create custom fields for holding the OAuth2 data
+// This way we don't have to worry about the default email/password fields
+// and we can keep them hidden from the Admin UI and API responses
+const OAUTH_CUSTOM_INTERNAL_FIELDS: Field[] = [
+  {
+    name: '_oauth_username',
+    type: 'text',
+    hidden: true,
+    admin: {
+      hidden: true,
+    },
+    access: {
+      read: () => false,
+    },
+  },
+  {
+    name: '_oauth_internal_password',
+    type: 'text',
+    hidden: true,
+    admin: {
+      hidden: true,
+    },
+    access: {
+      read: () => false,
+    },
+  }
+]
+
 export const oAuthPlugin =
   (options: oAuthPluginOptions) =>
   (incoming: Config): Config => {
-    // Shorthands
-    const users = options.userCollection?.slug || 'users'
-    const username = options.usernameField?.name || 'sub'
-    const password = options.passwordField?.name || 'password'
 
-    // Spread the existing config
+    const slug = options.userCollection?.slug || 'users'
+
+    // Spread the existing config but appending the new fields to the User collection
     const config: Config = {
       ...incoming,
-      collections: (incoming.collections || []).map((c) => {
-        // Users must have a password field to be able to sign in
-        if (
-          c.slug === users &&
-          !c.fields.some((f) => (f as TextField).name === password)
-        ) {
-          c.fields.push({
-            name: password,
-            type: 'text',
-            admin: { hidden: true },
-            access: { update: () => false },
-          })
-        }
-        // Users must have a password field to be able to sign in
-        if (
-          c.slug === users &&
-          !c.fields.some((f) => (f as TextField).name === username)
-        ) {
-          c.fields.push({
-            name: username,
-            type: 'text',
-            admin: { readOnly: true },
-            access: { update: () => false },
-          })
-        }
-        return c
-      }),
+      collections: (incoming.collections || []).map((c) => ({
+        ...c,
+        fields: c.slug != slug ? c.fields : [
+          ...c.fields,
+          ...OAUTH_CUSTOM_INTERNAL_FIELDS,
+        ],
+      })),
     }
 
     return CLIENTSIDE
@@ -116,9 +124,8 @@ function oAuthPluginServer(
     options.callbackPath ||
     (options.callbackURL && new URL(options.callbackURL).pathname) ||
     '/oauth2/callback'
+
   const slug = options.userCollection?.slug || 'users'
-  const username = options.usernameField?.name || 'sub'
-  const password = options.passwordField?.name || 'password'
 
   // Passport strategy
   const strategy = new OAuth2Strategy(
@@ -137,15 +144,23 @@ function oAuthPluginServer(
         // Match existing user
         const users = await payload.find({
           collection: slug,
-          where: { [username]: { equals: user[username as 'sub'] } },
+          where: { ['_oauth_username']: { equals: user['sub'] } },
+          showHiddenFields: true,
         })
+
         if (users.docs && users.docs.length) {
           const user = users.docs[0]
           user.collection = slug
           user._strategy = 'oauth2'
+
+          delete user._oauth_username
+
           cb(null, user)
           return
         }
+
+        // Create internal temporary password for authenticating during the OAuth flow
+        const internalGeneratedPassword = str62(32)
 
         // Register new user
         const registered = await payload.create({
@@ -153,9 +168,12 @@ function oAuthPluginServer(
           data: {
             ...user,
             // Stuff breaks when password is missing
-            [password]: user.password || str62(20),
+            password: internalGeneratedPassword,
+            ['_oauth_internal_password']: internalGeneratedPassword,
+            ['_oauth_username']: user['sub'],
           },
         })
+
         registered.collection = slug
         registered._strategy = 'oauth2'
         cb(null, registered)
@@ -233,12 +251,14 @@ function oAuthPluginServer(
         method: 'get',
         root: true,
         async handler(req, res) {
+          // User _oauth_internal_password that has been provided by oauth2 handler
           await payload.login({
             req,
             res,
             collection: 'users',
-            data: { email: req.user.email, password: req.user.password },
+            data: { email: req.user.email, password: req.user._oauth_internal_password }, 
           })
+
           // Successful authentication, redirect home.
           res.redirect('/admin')
         },
