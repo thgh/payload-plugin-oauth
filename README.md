@@ -39,7 +39,7 @@ export default buildConfig({
       clientSecret: process.env.CLIENT_SECRET,
       authorizationURL: process.env.OAUTH_SERVER + '/oauth/authorize',
       tokenURL: process.env.OAUTH_SERVER + '/oauth/token',
-      callbackURL: process.env.SERVER_URL + '/oauth/callback',
+      callbackURL: process.env.SERVER_URL + '/oauth2/callback',
       scope: 'basic',
       async userinfo(accessToken) {
         const { data: user } = await axios.get(OAUTH_SERVER + '/oauth/me', {
