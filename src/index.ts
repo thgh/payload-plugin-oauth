@@ -187,7 +187,7 @@ function oAuthPluginServer(
     admin: {
       ...incoming.admin,
       webpack: (webpackConfig) => {
-        const config = incoming.admin?.webpack?.(webpackConfig) || {}
+        const config = incoming.admin?.webpack?.(webpackConfig) || webpackConfig
         return {
           ...config,
           resolve: {
