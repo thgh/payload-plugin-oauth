@@ -214,7 +214,6 @@ function oAuthPluginServer(
               'connect-mongo': false,
               'express-session': false,
               'passport-oauth2': false,
-              axios: false,
               jsonwebtoken: false,
               passport: false,
             },

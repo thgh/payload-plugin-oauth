@@ -21,7 +21,6 @@
   ],
   "dependencies": {
     "@bothrs/util": "^3",
-    "axios": "^1",
     "debug": "^4",
     "express-session": "^1",
     "passport-oauth2": "^1"
