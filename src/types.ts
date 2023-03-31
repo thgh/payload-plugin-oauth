@@ -2,6 +2,9 @@ import type { StrategyOptions } from 'passport-oauth2'
 import type { ComponentType } from 'react'
 
 export interface oAuthPluginOptions extends StrategyOptions {
+  /** How to connect to the Mongo database? */
+  mongoUrl: string
+
   /** Map an authentication result to a user */
   userinfo: (accessToken: string) => Promise<{
     /** Unique identifier for the linked account */
@@ -24,12 +27,9 @@ export interface oAuthPluginOptions extends StrategyOptions {
     /** Defaults to "users" */
     slug?: string
   }
-  usernameField?: {
+  /** If the collection does not have a field with name "sub", it will be created */
+  subField?: {
     /** Defaults to "sub" */
-    name?: string
-  }
-  passwordField?: {
-    /** Defaults to "password" */
     name?: string
   }
 }

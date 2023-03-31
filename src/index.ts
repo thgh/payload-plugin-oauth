@@ -1,14 +1,30 @@
 import { str62 } from '@bothrs/util/random'
+import { AxiosResponse } from 'axios'
+import MongoStore from 'connect-mongo'
+import session from 'express-session'
+import jwt from 'jsonwebtoken'
+import passport from 'passport'
 import OAuth2Strategy, { VerifyCallback } from 'passport-oauth2'
+import debug from 'debug'
 import payload from 'payload'
 import { Config } from 'payload/config'
-import session from 'express-session'
-import passport from 'passport'
+import {
+  Field,
+  fieldAffectsData,
+  fieldHasSubFields,
+} from 'payload/dist/fields/config/types'
+import { PaginatedDocs } from 'payload/dist/mongoose/types'
+import getCookieExpiration from 'payload/dist/utilities/getCookieExpiration'
 import { TextField } from 'payload/types'
+
 import OAuthButton from './OAuthButton'
 import type { oAuthPluginOptions } from './types'
 
 export { OAuthButton, oAuthPluginOptions }
+
+interface User {}
+
+const log = debug('plugin:oauth')
 
 // Detect client side because some dependencies may be nullified
 const CLIENTSIDE = typeof session !== 'function'
@@ -19,14 +35,15 @@ const CLIENTSIDE = typeof session !== 'function'
  * ```
  * export function mijnNederlandsAuth() {
  *   return oAuthPlugin({
- *     clientID: OAUTH_CLIENT_ID,
- *     clientSecret: OAUTH_CLIENT_SECRET,
- *     authorizationURL: OAUTH_SERVER + '/oauth/authorize',
- *     tokenURL: OAUTH_SERVER + '/oauth/token',
- *     callbackURL: ORIGIN + '/oauth/callback',
+ *     mongoUrl: process.env.MONGO_URL,
+ *     clientID: process.env.OAUTH_CLIENT_ID,
+ *     clientSecret: process.env.OAUTH_CLIENT_SECRET,
+ *     authorizationURL: process.env.OAUTH_SERVER + '/oauth/authorize',
+ *     tokenURL: process.env.OAUTH_SERVER + '/oauth/token',
+ *     callbackURL: process.env.ORIGIN + '/oauth/callback',
  *     scope: 'basic',
  *     async userinfo(accessToken) {
- *       const { data: user } = await axios.get(OAUTH_SERVER + '/oauth/me', {
+ *       const { data: user } = await axios.get(process.env.OAUTH_SERVER + '/oauth/me', {
  *         params: { access_token: accessToken },
  *       })
  *       return {
@@ -46,33 +63,20 @@ export const oAuthPlugin =
   (options: oAuthPluginOptions) =>
   (incoming: Config): Config => {
     // Shorthands
-    const users = options.userCollection?.slug || 'users'
-    const username = options.usernameField?.name || 'sub'
-    const password = options.passwordField?.name || 'password'
+    const collectionSlug = options.userCollection?.slug || 'users'
+    const sub = options.subField?.name || 'sub'
 
     // Spread the existing config
     const config: Config = {
       ...incoming,
       collections: (incoming.collections || []).map((c) => {
-        // Users must have a password field to be able to sign in
+        // Let's track the oAuth id (sub)
         if (
-          c.slug === users &&
-          !c.fields.some((f) => (f as TextField).name === password)
+          c.slug === collectionSlug &&
+          !c.fields.some((f) => (f as TextField).name === sub)
         ) {
           c.fields.push({
-            name: password,
-            type: 'text',
-            admin: { hidden: true },
-            access: { update: () => false },
-          })
-        }
-        // Users must have a password field to be able to sign in
-        if (
-          c.slug === users &&
-          !c.fields.some((f) => (f as TextField).name === username)
-        ) {
-          c.fields.push({
-            name: username,
+            name: sub,
             type: 'text',
             admin: { readOnly: true },
             access: { update: () => false },
@@ -99,8 +103,8 @@ function oAuthPluginClient(
       ...incoming.admin,
       components: {
         ...incoming.admin?.components,
-        beforeLogin: [button].concat(
-          incoming.admin?.components?.beforeLogin || []
+        beforeLogin: (incoming.admin?.components?.beforeLogin || []).concat(
+          button
         ),
       },
     },
@@ -112,73 +116,86 @@ function oAuthPluginServer(
   options: oAuthPluginOptions
 ): Config {
   // Shorthands
-  const path =
+  const callbackPath =
     options.callbackPath ||
     (options.callbackURL && new URL(options.callbackURL).pathname) ||
     '/oauth2/callback'
-  const slug = options.userCollection?.slug || 'users'
-  const username = options.usernameField?.name || 'sub'
-  const password = options.passwordField?.name || 'password'
+  const authorizePath = '/oauth2/authorize'
+  const collectionSlug = (options.userCollection?.slug as 'users') || 'users'
+  const sub = options.subField?.name || 'sub'
 
   // Passport strategy
-  const strategy = new OAuth2Strategy(
-    options,
-    async (
+  if (options.clientID) {
+    const strategy = new OAuth2Strategy(options, async function (
       accessToken: string,
       refreshToken: string,
       profile: {},
       cb: VerifyCallback
-    ) => {
+    ) {
+      let info: {
+        sub: string
+        email?: string
+        password?: string
+        name?: string
+      }
+      let user: User & { collection?: any; _strategy?: any }
+      let users: PaginatedDocs<User>
       try {
         // Get the userinfo
-        const user = await options.userinfo?.(accessToken)
-        if (!user) throw new Error('Failed to get userinfo')
+        info = await options.userinfo?.(accessToken)
+        if (!info) throw new Error('Failed to get userinfo')
 
         // Match existing user
-        const users = await payload.find({
-          collection: slug,
-          where: { [username]: { equals: user[username as 'sub'] } },
+        users = await payload.find({
+          collection: collectionSlug,
+          where: { [sub]: { equals: info[sub as 'sub'] } },
+          showHiddenFields: true,
         })
+
         if (users.docs && users.docs.length) {
-          const user = users.docs[0]
-          user.collection = slug
+          user = users.docs[0]
+          user.collection = collectionSlug
           user._strategy = 'oauth2'
-          cb(null, user)
-          return
+        } else {
+          // Register new user
+          user = await payload.create({
+            collection: collectionSlug,
+            data: {
+              ...info,
+              // Stuff breaks when password is missing
+              password: info.password || str62(20),
+            },
+            showHiddenFields: true,
+          })
+          log('signin.user', user)
+          user.collection = collectionSlug
+          user._strategy = 'oauth2'
         }
 
-        // Register new user
-        const registered = await payload.create({
-          collection: slug,
-          data: {
-            ...user,
-            // Stuff breaks when password is missing
-            [password]: user.password || str62(20),
-          },
-        })
-        registered.collection = slug
-        registered._strategy = 'oauth2'
-        cb(null, registered)
+        cb(null, user)
       } catch (error: any) {
+        log('signin.fail', error.message, error.trace)
         cb(error)
       }
-    }
-  )
+    })
 
-  // Alternative?
-  // strategy.userProfile = async (accessToken, cb) => {
-  //   const user = await options.userinfo?.(accessToken)
-  //   if (!user) cb(new Error('Failed to get userinfo'))
-  //   else cb(null, user)
-  // }
+    // Alternative?
+    // strategy.userProfile = async (accessToken, cb) => {
+    //   const user = await options.userinfo?.(accessToken)
+    //   if (!user) cb(new Error('Failed to get userinfo'))
+    //   else cb(null, user)
+    // }
 
-  passport.use(strategy)
+    passport.use(strategy)
+  } else {
+    console.warn('No client id, oauth disabled')
+  }
   // passport.serializeUser((user: Express.User, done) => {
   passport.serializeUser((user: any, done) => {
     done(null, user.id)
   })
   passport.deserializeUser(async (id: string, done) => {
-    const ok = await payload.findByID({ collection: 'user', id })
+    const ok = await payload.findByID({ collection: collectionSlug, id })
     done(null, ok)
   })
 
@@ -187,16 +204,18 @@ function oAuthPluginServer(
     admin: {
       ...incoming.admin,
       webpack: (webpackConfig) => {
-        const config = incoming.admin?.webpack?.(webpackConfig) || {}
+        const config = incoming.admin?.webpack?.(webpackConfig) || webpackConfig
         return {
           ...config,
           resolve: {
             ...config.resolve,
             alias: {
               ...config.resolve?.alias,
-              axios: false,
-              'passport-oauth2': false,
+              'connect-mongo': false,
               'express-session': false,
+              'passport-oauth2': false,
+              axios: false,
+              jsonwebtoken: false,
               passport: false,
             },
           },
@@ -205,41 +224,89 @@ function oAuthPluginServer(
     },
     endpoints: (incoming.endpoints || []).concat([
       {
-        path: '/oauth2/*',
+        path: authorizePath,
+        method: 'get',
+        root: true,
+        handler: passport.authenticate('oauth2'),
+      },
+      {
+        path: callbackPath,
         method: 'get',
         root: true,
         handler: session({
           resave: false,
           saveUninitialized: false,
-          secret: 'demo',
+          secret:
+            process.env.PAYLOAD_SECRET ||
+            log('Missing process.env.PAYLOAD_SECRET') ||
+            'unsafe',
+          store: options.mongoUrl
+            ? MongoStore.create({ mongoUrl: options.mongoUrl })
+            : undefined,
         }),
       },
       {
-        path: '/oauth2/authorize',
+        path: callbackPath,
         method: 'get',
         root: true,
-        handler: passport.authenticate('oauth2', { state: 'aaa' }),
+        handler: passport.authenticate('oauth2', { failureRedirect: '/' }),
       },
       {
-        path,
-        method: 'get',
-        root: true,
-        handler: passport.authenticate('oauth2', {
-          failureRedirect: '/admin/login',
-        }),
-      },
-      {
-        path,
+        path: callbackPath,
         method: 'get',
         root: true,
         async handler(req, res) {
-          await payload.login({
-            req,
-            res,
-            collection: 'users',
-            data: { email: req.user.email, password: req.user.password },
+          // Get the Mongoose user
+          const collectionConfig = payload.collections[collectionSlug].config
+
+          // Sanitize the user object
+          // let user = userDoc.toJSON({ virtuals: true })
+          let user = JSON.parse(JSON.stringify(req.user))
+
+          // Decide which user fields to include in the JWT
+          const fieldsToSign = collectionConfig.fields.reduce(
+            (signedFields, field: Field) => {
+              const result = {
+                ...signedFields,
+              }
+
+              if (!fieldAffectsData(field) && fieldHasSubFields(field)) {
+                field.fields.forEach((subField) => {
+                  if (fieldAffectsData(subField) && subField.saveToJWT) {
+                    result[subField.name] = user[subField.name]
+                  }
+                })
+              }
+
+              if (fieldAffectsData(field) && field.saveToJWT) {
+                result[field.name] = user[field.name]
+              }
+
+              return result
+            },
+            {
+              email: user.email,
+              id: user.id,
+              collection: collectionConfig.slug,
+            } as any
+          )
+
+          // Sign the JWT
+          const token = jwt.sign(fieldsToSign, payload.secret, {
+            expiresIn: collectionConfig.auth.tokenExpiration,
           })
-          // Successful authentication, redirect home.
+
+          // Set cookie
+          res.cookie(`${payload.config.cookiePrefix}-token`, token, {
+            path: '/',
+            httpOnly: true,
+            expires: getCookieExpiration(collectionConfig.auth.tokenExpiration),
+            secure: collectionConfig.auth.cookies.secure,
+            sameSite: collectionConfig.auth.cookies.sameSite,
+            domain: collectionConfig.auth.cookies.domain || undefined,
+          })
+
+          // Redirect to admin dashboard
           res.redirect('/admin')
         },
       },
