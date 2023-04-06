@@ -1,5 +1,4 @@
 import { str62 } from '@bothrs/util/random'
-import { AxiosResponse } from 'axios'
 import MongoStore from 'connect-mongo'
 import session from 'express-session'
 import jwt from 'jsonwebtoken'

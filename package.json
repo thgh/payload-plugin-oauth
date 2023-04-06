@@ -32,6 +32,7 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/passport": "^1",
     "@types/passport-oauth2": "^1",
+    "@types/react": "^18.0.33",
     "passport": "^0.6",
     "payload": "^1",
     "react": "^18",
