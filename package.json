@@ -21,6 +21,7 @@
   ],
   "dependencies": {
     "@bothrs/util": "^3",
+    "connect-mongo": "^4",
     "debug": "^4",
     "express-session": "^1",
     "passport-oauth2": "^1"
@@ -31,7 +32,6 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/passport": "^1",
     "@types/passport-oauth2": "^1",
-    "connect-mongo": "^5.0.0",
     "passport": "^0.6",
     "payload": "^1",
     "react": "^18",
