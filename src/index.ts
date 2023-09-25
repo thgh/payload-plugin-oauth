@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import OAuth2Strategy, { VerifyCallback } from 'passport-oauth2'
 import debug from 'debug'
-import payload from 'payload'
+import  { Payload } from 'payload'
 import { Config } from 'payload/config'
 import {
   Field,
@@ -27,7 +27,8 @@ const log = debug('plugin:oauth')
 
 // Detect client side because some dependencies may be nullified
 const CLIENTSIDE = typeof session !== 'function'
-
+// create a variable to hold the payload instance, that is assigned in the onInit function
+let payload:Payload
 /**
  * Example for Wordpress:
  *
@@ -309,5 +310,11 @@ function oAuthPluginServer(
         },
       },
     ]),
+    onInit: async (_payload) => {
+      // await incoming config onInit
+      if (incoming.onInit) await incoming.onInit(_payload);
+      // assign payload to local variable
+      payload = _payload;
+    },
   }
 }
