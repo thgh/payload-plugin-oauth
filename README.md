@@ -28,35 +28,54 @@ yarn add payload-plugin-oauth
 
 ```js
 // payload.config.ts
-import { oAuthPlugin } from 'payload-plugin-oauth'
+import path from "path";
+
+import { webpackBundler } from "@payloadcms/bundler-webpack";
+import { mongooseAdapter } from "@payloadcms/db-mongodb";
+import { slateEditor } from "@payloadcms/richtext-slate";
+import axios from "axios";
+import { oAuthPlugin } from "payload-plugin-oauth";
+import { buildConfig } from "payload/config";
+import Users from "./collections/Users";
 
 export default buildConfig({
-  serverURL: process.env.SERVER_URL,
-  collections: [Users],
-  plugins: [
-    oAuthPlugin({
-      clientID: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      authorizationURL: process.env.OAUTH_SERVER + '/oauth/authorize',
-      tokenURL: process.env.OAUTH_SERVER + '/oauth/token',
-      callbackURL: process.env.SERVER_URL + '/oauth2/callback',
-      scope: 'basic',
-      async userinfo(accessToken) {
-        const { data: user } = await axios.get(OAUTH_SERVER + '/oauth/me', {
-          params: { access_token: accessToken },
-        })
-        return {
-          sub: user.ID,
-
-          // Custom fields to fill in if user is created
-          name: user.display_name || user.user_nicename || 'Naamloos',
-          email: user.user_email,
-          role: user.capabilities?.administrator ? 'admin' : 'user',
-        }
-      },
-    }),
-  ],
-})
+	admin: {
+		user: Users.slug,
+		bundler: webpackBundler()
+	},
+	editor: slateEditor({}),
+	collections: [Users],
+	typescript: {
+		outputFile: path.resolve(__dirname, "payload-types.ts")
+	},
+	graphQL: {
+		schemaOutputFile: path.resolve(__dirname, "generated-schema.graphql")
+	},
+	plugins: [
+		payloadCloud(),
+		oAuthPlugin({
+			databaseUri: process.env.DATABASE_URI,
+			clientID: process.env.OAUTH_CLIENT_ID,
+			clientSecret: process.env.OAUTH_CLIENT_SECRET,
+			authorizationURL: process.env.OAUTH_AUTH_ENDPOINT,
+			tokenURL: process.env.OAUTH_TOKEN_ENDPOINT,
+			callbackURL: process.env.OAUTH_CALLBACK_ENDPOINT,
+			async userinfo(accessToken) {
+				const { data: user } = await axios.get(
+					process.env.OAUTH_USERINFO_ENDPOINT,
+					{ headers: { Authorization: `Bearer ${accessToken}` } }
+				);
+				return {
+					sub: user.ID,
+					username: user.preferred_username
+				};
+			}
+		})
+	],
+	db: mongooseAdapter({
+		url: process.env.DATABASE_URI
+	})
+});
 ```
 
 ## Changelog
@@ -76,6 +95,7 @@ To get it running:
 ## Credits
 
 - [Thomas Ghysels](https://github.com/thgh)
+- [Wilson Le](https://github.com/wilsonle)
 - [All Contributors][link-contributors]
 
 ## License

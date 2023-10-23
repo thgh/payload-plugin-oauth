@@ -12,7 +12,7 @@ import {
   fieldAffectsData,
   fieldHasSubFields,
 } from 'payload/dist/fields/config/types'
-import { PaginatedDocs } from 'payload/dist/mongoose/types'
+import { PaginatedDocs } from 'payload/dist/database/types'
 import getCookieExpiration from 'payload/dist/utilities/getCookieExpiration'
 import { TextField } from 'payload/types'
 
@@ -119,7 +119,7 @@ function oAuthPluginServer(
     options.callbackPath ||
     (options.callbackURL && new URL(options.callbackURL).pathname) ||
     '/oauth2/callback'
-  const authorizePath = '/oauth2/authorize'
+  const authorizePath = options.customAuthorizePath ?? '/oauth2/authorize'
   const collectionSlug = (options.userCollection?.slug as 'users') || 'users'
   const sub = options.subField?.name || 'sub'
 
@@ -231,15 +231,15 @@ function oAuthPluginServer(
         path: callbackPath,
         method: 'get',
         root: true,
-        handler: session({
+        handler: session(options.sessionOptions ?? {
           resave: false,
           saveUninitialized: false,
           secret:
             process.env.PAYLOAD_SECRET ||
             log('Missing process.env.PAYLOAD_SECRET') ||
             'unsafe',
-          store: options.mongoUrl
-            ? MongoStore.create({ mongoUrl: options.mongoUrl })
+          store: options.databaseUri
+            ? MongoStore.create({ mongoUrl: options.databaseUri })
             : undefined,
         }),
       },
