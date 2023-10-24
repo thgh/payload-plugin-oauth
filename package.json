@@ -7,6 +7,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "tsc",
+    "fix": "npx prettier src --write",
     "test": "echo 'no tests'"
   },
   "exports": {
@@ -34,13 +35,13 @@
     "@types/passport-oauth2": "^1",
     "@types/react": "^18.0.33",
     "passport": "^0.6",
-    "payload": "^2.0.11",
+    "payload": "^2",
     "react": "^18",
     "typescript": "^4"
   },
   "peerDependencies": {
     "passport": "^0.6",
-    "payload": "^2.0.11",
+    "payload": "^2",
     "react": "^18"
   },
   "author": "Thomas Ghysels <info@thomasg.be>",

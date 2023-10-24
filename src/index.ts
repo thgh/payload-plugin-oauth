@@ -119,7 +119,7 @@ function oAuthPluginServer(
     options.callbackPath ||
     (options.callbackURL && new URL(options.callbackURL).pathname) ||
     '/oauth2/callback'
-  const authorizePath = options.customAuthorizePath ?? '/oauth2/authorize'
+  const authorizePath = options.authorizePath ?? '/oauth2/authorize'
   const collectionSlug = (options.userCollection?.slug as 'users') || 'users'
   const sub = options.subField?.name || 'sub'
 
@@ -231,17 +231,19 @@ function oAuthPluginServer(
         path: callbackPath,
         method: 'get',
         root: true,
-        handler: session(options.sessionOptions ?? {
-          resave: false,
-          saveUninitialized: false,
-          secret:
-            process.env.PAYLOAD_SECRET ||
-            log('Missing process.env.PAYLOAD_SECRET') ||
-            'unsafe',
-          store: options.databaseUri
-            ? MongoStore.create({ mongoUrl: options.databaseUri })
-            : undefined,
-        }),
+        handler: session(
+          options.sessionOptions ?? {
+            resave: false,
+            saveUninitialized: false,
+            secret:
+              process.env.PAYLOAD_SECRET ||
+              log('Missing process.env.PAYLOAD_SECRET') ||
+              'unsafe',
+            store: options.databaseUri
+              ? MongoStore.create({ mongoUrl: options.databaseUri })
+              : undefined,
+          }
+        ),
       },
       {
         path: callbackPath,

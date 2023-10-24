@@ -28,54 +28,54 @@ yarn add payload-plugin-oauth
 
 ```js
 // payload.config.ts
-import path from "path";
+import path from 'path'
 
-import { webpackBundler } from "@payloadcms/bundler-webpack";
-import { mongooseAdapter } from "@payloadcms/db-mongodb";
-import { slateEditor } from "@payloadcms/richtext-slate";
-import axios from "axios";
-import { oAuthPlugin } from "payload-plugin-oauth";
-import { buildConfig } from "payload/config";
-import Users from "./collections/Users";
+import { webpackBundler } from '@payloadcms/bundler-webpack'
+import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { slateEditor } from '@payloadcms/richtext-slate'
+import axios from 'axios'
+import { oAuthPlugin } from 'payload-plugin-oauth'
+import { buildConfig } from 'payload/config'
+import Users from './collections/Users'
 
 export default buildConfig({
-	admin: {
-		user: Users.slug,
-		bundler: webpackBundler()
-	},
-	editor: slateEditor({}),
-	collections: [Users],
-	typescript: {
-		outputFile: path.resolve(__dirname, "payload-types.ts")
-	},
-	graphQL: {
-		schemaOutputFile: path.resolve(__dirname, "generated-schema.graphql")
-	},
-	plugins: [
-		payloadCloud(),
-		oAuthPlugin({
-			databaseUri: process.env.DATABASE_URI,
-			clientID: process.env.OAUTH_CLIENT_ID,
-			clientSecret: process.env.OAUTH_CLIENT_SECRET,
-			authorizationURL: process.env.OAUTH_AUTH_ENDPOINT,
-			tokenURL: process.env.OAUTH_TOKEN_ENDPOINT,
-			callbackURL: process.env.OAUTH_CALLBACK_ENDPOINT,
-			async userinfo(accessToken) {
-				const { data: user } = await axios.get(
-					process.env.OAUTH_USERINFO_ENDPOINT,
-					{ headers: { Authorization: `Bearer ${accessToken}` } }
-				);
-				return {
-					sub: user.ID,
-					username: user.preferred_username
-				};
-			}
-		})
-	],
-	db: mongooseAdapter({
-		url: process.env.DATABASE_URI
-	})
-});
+  admin: {
+    user: Users.slug,
+    bundler: webpackBundler(),
+  },
+  editor: slateEditor({}),
+  collections: [Users],
+  typescript: {
+    outputFile: path.resolve(__dirname, 'payload-types.ts'),
+  },
+  graphQL: {
+    schemaOutputFile: path.resolve(__dirname, 'generated-schema.graphql'),
+  },
+  plugins: [
+    payloadCloud(),
+    oAuthPlugin({
+      databaseUri: process.env.DATABASE_URI,
+      clientID: process.env.OAUTH_CLIENT_ID,
+      clientSecret: process.env.OAUTH_CLIENT_SECRET,
+      authorizationURL: process.env.OAUTH_AUTH_ENDPOINT,
+      tokenURL: process.env.OAUTH_TOKEN_ENDPOINT,
+      callbackURL: process.env.OAUTH_CALLBACK_ENDPOINT,
+      async userinfo(accessToken) {
+        const { data: user } = await axios.get(
+          process.env.OAUTH_USERINFO_ENDPOINT,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        )
+        return {
+          sub: user.ID,
+          username: user.preferred_username,
+        }
+      },
+    }),
+  ],
+  db: mongooseAdapter({
+    url: process.env.DATABASE_URI,
+  }),
+})
 ```
 
 ## Changelog
@@ -91,6 +91,12 @@ To get it running:
 1. Clone the project.
 2. `npm install`
 3. `npm run build`
+
+## Publishing process
+
+1. Run `npm run fix`
+2. Run `npm version minor`
+3. Push to Github and let CI publish to NPM
 
 ## Credits
 
