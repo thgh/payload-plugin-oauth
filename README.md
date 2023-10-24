@@ -18,10 +18,20 @@
 
 ## Installation
 
+Payload v2
+
 ```
-npm install payload-plugin-oauth
+npm install payload-plugin-oauth@^2
 # or
-yarn add payload-plugin-oauth
+yarn add payload-plugin-oauth@^2
+```
+
+Payload v1
+
+```
+npm install payload-plugin-oauth@^1
+# or
+yarn add payload-plugin-oauth@^1
 ```
 
 ## Usage
