@@ -58,4 +58,6 @@ export interface oAuthPluginOptions extends StrategyOptions {
     /** Defaults to "sub" */
     name?: string
   }
+  /** Which path to redirect the authenticated user to, redirects to /admin by default */
+  userRedirectionPath?: string
 }
