@@ -307,8 +307,7 @@ function oAuthPluginServer(
           })
 
           // Redirect to the defined path or default to the admin dashboard
-          const userRedirectionPath = options.userRedirectionPath || '/admin'
-          res.redirect(userRedirectionPath)
+          res.redirect(options.successRedirect || '/admin')
         },
       },
     ]),

@@ -50,14 +50,16 @@ export interface oAuthPluginOptions extends StrategyOptions {
     Button?: ComponentType<any>
   }
   userCollection?: {
-    /** Defaults to "users" */
+    /** @default "users" */
     slug?: string
   }
   /** If the collection does not have a field with name "sub", it will be created */
   subField?: {
-    /** Defaults to "sub" */
+    /** @default "sub" */
     name?: string
   }
-  /** Which path to redirect the authenticated user to, redirects to /admin by default */
-  userRedirectionPath?: string
+  /** Path or URL to redirect the authenticated user to
+   * @default /admin
+   */
+  successRedirect?: string
 }
