@@ -34,7 +34,7 @@ const CLIENTSIDE = typeof session !== 'function'
  * ```
  * export function mijnNederlandsAuth() {
  *   return oAuthPlugin({
- *     mongoUrl: process.env.MONGO_URL,
+ *     databaseUri: process.env.MONGO_URL,
  *     clientID: process.env.OAUTH_CLIENT_ID,
  *     clientSecret: process.env.OAUTH_CLIENT_SECRET,
  *     authorizationURL: process.env.OAUTH_SERVER + '/oauth/authorize',
@@ -306,8 +306,9 @@ function oAuthPluginServer(
             domain: collectionConfig.auth.cookies.domain || undefined,
           })
 
-          // Redirect to admin dashboard
-          res.redirect('/admin')
+          // Redirect to the defined path or default to the admin dashboard
+          const userRedirectionPath = options.userRedirectionPath || '/admin'
+          res.redirect(userRedirectionPath)
         },
       },
     ]),
