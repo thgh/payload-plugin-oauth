@@ -122,9 +122,23 @@ function oAuthPluginServer(
   const authorizePath = options.authorizePath ?? '/oauth2/authorize'
   const collectionSlug = (options.userCollection?.slug as 'users') || 'users'
   const sub = options.subField?.name || 'sub'
+  const oAuthStrategyCount = (incoming.custom?.oAuthStrategyCount || 0) + 1
+  const strategyName = `oauth2-${incoming.custom?.oAuthStrategyCount}`
 
-  // Passport strategy
   if (options.clientID) {
+    // Validate paths, they must be unique
+    const oAuthPaths = incoming.custom?.oAuthPaths || new Set()
+    if (oAuthPaths.has(authorizePath))
+      throw new Error(
+        `Choose a unique authorizePath for oAuth strategy ${oAuthStrategyCount} (not ${options.authorizePath})`
+      )
+    oAuthPaths.add(authorizePath)
+    if (oAuthPaths.has(callbackPath))
+      throw new Error(
+        `Choose a unique callbackPath for oAuth strategy ${oAuthStrategyCount} (not ${options.callbackPath})`
+      )
+
+    // Passport strategy
     const strategy = new OAuth2Strategy(options, async function (
       accessToken: string,
       refreshToken: string,
@@ -154,7 +168,7 @@ function oAuthPluginServer(
         if (users.docs && users.docs.length) {
           user = users.docs[0]
           user.collection = collectionSlug
-          user._strategy = 'oauth2'
+          user._strategy = strategyName
         } else {
           // Register new user
           user = await payload.create({
@@ -168,7 +182,7 @@ function oAuthPluginServer(
           })
           log('signin.user', user)
           user.collection = collectionSlug
-          user._strategy = 'oauth2'
+          user._strategy = strategyName
         }
 
         cb(null, user)
@@ -185,21 +199,22 @@ function oAuthPluginServer(
     //   else cb(null, user)
     // }
 
-    passport.use(strategy)
+    passport.use(strategyName, strategy)
+    // passport.serializeUser((user: Express.User, done) => {
+    passport.serializeUser((user: any, done) => {
+      done(null, user.id)
+    })
+    passport.deserializeUser(async (id: string, done) => {
+      const ok = await payload.findByID({ collection: collectionSlug, id })
+      done(null, ok)
+    })
   } else {
     console.warn('No client id, oauth disabled')
   }
-  // passport.serializeUser((user: Express.User, done) => {
-  passport.serializeUser((user: any, done) => {
-    done(null, user.id)
-  })
-  passport.deserializeUser(async (id: string, done) => {
-    const ok = await payload.findByID({ collection: collectionSlug, id })
-    done(null, ok)
-  })
 
   return {
     ...incoming,
+    custom: { ...incoming.custom, oAuthStrategyCount },
     admin: {
       ...incoming.admin,
       webpack: (webpackConfig) => {
@@ -225,7 +240,7 @@ function oAuthPluginServer(
         path: authorizePath,
         method: 'get',
         root: true,
-        handler: passport.authenticate('oauth2'),
+        handler: passport.authenticate(strategyName),
       },
       {
         path: callbackPath,
@@ -249,7 +264,7 @@ function oAuthPluginServer(
         path: callbackPath,
         method: 'get',
         root: true,
-        handler: passport.authenticate('oauth2', { failureRedirect: '/' }),
+        handler: passport.authenticate(strategyName, { failureRedirect: '/' }),
       },
       {
         path: callbackPath,
