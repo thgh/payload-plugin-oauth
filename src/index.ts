@@ -18,6 +18,7 @@ import { TextField } from 'payload/types'
 
 import OAuthButton from './OAuthButton'
 import type { oAuthPluginOptions } from './types'
+import { createElement } from 'react'
 
 export { OAuthButton, oAuthPluginOptions }
 
@@ -94,20 +95,25 @@ function oAuthPluginClient(
   incoming: Config,
   options: oAuthPluginOptions
 ): Config {
-  const button: React.ComponentType<any> =
-    options.components?.Button || OAuthButton
-  return {
-    ...incoming,
-    admin: {
-      ...incoming.admin,
-      components: {
-        ...incoming.admin?.components,
-        beforeLogin: (incoming.admin?.components?.beforeLogin || []).concat(
-          button
-        ),
-      },
-    },
-  }
+  const button = options.components?.Button ?? OAuthButton
+  return button
+    ? {
+        ...incoming,
+        admin: {
+          ...incoming.admin,
+          components: {
+            ...incoming.admin?.components,
+            beforeLogin: (incoming.admin?.components?.beforeLogin || []).concat(
+              () =>
+                createElement(button, {
+                  authorizePath: options.authorizePath || '/oauth2/authorize',
+                  buttonLabel: options.buttonLabel || `Sign in with oAuth`,
+                })
+            ),
+          },
+        },
+      }
+    : incoming
 }
 
 function oAuthPluginServer(
@@ -123,7 +129,7 @@ function oAuthPluginServer(
   const collectionSlug = (options.userCollection?.slug as 'users') || 'users'
   const sub = options.subField?.name || 'sub'
   const oAuthStrategyCount = (incoming.custom?.oAuthStrategyCount || 0) + 1
-  const strategyName = `oauth2-${incoming.custom?.oAuthStrategyCount}`
+  const strategyName = `oauth2-${oAuthStrategyCount}`
 
   if (options.clientID) {
     // Validate paths, they must be unique

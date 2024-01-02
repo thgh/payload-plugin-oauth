@@ -64,12 +64,14 @@ export default buildConfig({
   plugins: [
     payloadCloud(),
     oAuthPlugin({
+      buttonLabel: 'Sign in with oAuth',
       databaseUri: process.env.DATABASE_URI,
       clientID: process.env.OAUTH_CLIENT_ID,
       clientSecret: process.env.OAUTH_CLIENT_SECRET,
       authorizationURL: process.env.OAUTH_AUTH_ENDPOINT,
       tokenURL: process.env.OAUTH_TOKEN_ENDPOINT,
-      callbackURL: process.env.OAUTH_CALLBACK_ENDPOINT,
+      authorizePath: '/oauth/authorize1',
+      callbackURL: process.env.ORIGIN + '/oauth/callback1',
       async userinfo(accessToken) {
         const { data: user } = await axios.get(
           process.env.OAUTH_USERINFO_ENDPOINT,
@@ -80,6 +82,15 @@ export default buildConfig({
           username: user.preferred_username,
         }
       },
+    }),
+    // Another oAuth provider
+    oAuthPlugin({
+      buttonLabel: 'Sign in with Alternative',
+      // These paths must be unique per provider
+      authorizePath: '/oauth/authorize2',
+      callbackURL: process.env.ORIGIN + '/oauth/callback2',
+
+      ...rest,
     }),
   ],
   db: mongooseAdapter({

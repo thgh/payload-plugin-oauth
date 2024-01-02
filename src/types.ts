@@ -46,8 +46,14 @@ export interface oAuthPluginOptions extends StrategyOptions {
   /** Which path to mount in express, defaults to the path in callbackURL */
   callbackPath?: string
 
+  /**
+   * Text on the sign in button
+   * @default "Sign in with oAuth"
+   */
+  buttonLabel?: string
+
   components?: {
-    Button?: ComponentType<any>
+    Button?: false | ((props: ButtonProps) => JSX.Element)
   }
   userCollection?: {
     /** @default "users" */
@@ -62,4 +68,11 @@ export interface oAuthPluginOptions extends StrategyOptions {
    * @default /admin
    */
   successRedirect?: string
+}
+
+export type ButtonProps = {
+  /** Path that initiates the oAuth flow */
+  authorizePath: string
+  /** Text on the sign in button */
+  buttonLabel: string
 }
