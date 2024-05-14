@@ -22,7 +22,9 @@ import { createElement } from 'react'
 
 export { OAuthButton, oAuthPluginOptions }
 
-interface User {}
+interface User {
+  id: string | number
+}
 
 const log = debug('plugin:oauth')
 
@@ -173,6 +175,12 @@ function oAuthPluginServer(
 
         if (users.docs && users.docs.length) {
           user = users.docs[0]
+          user = await payload.update({
+            collection: collectionSlug,
+            id: user.id,
+            data: info,
+            showHiddenFields: true,
+          })
           user.collection = collectionSlug
           user._strategy = strategyName
         } else {
