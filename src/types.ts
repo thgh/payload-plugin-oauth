@@ -1,8 +1,12 @@
 import { type SessionOptions } from 'express-session'
-import type { StrategyOptions } from 'passport-oauth2'
+import type {
+  StrategyOptions,
+  StrategyOptionsWithRequest,
+} from 'passport-oauth2'
+import { Request } from 'express'
 import type { ComponentType } from 'react'
 
-export interface oAuthPluginOptions extends StrategyOptions {
+interface BaseOAuthPluginOptions {
   /** Database connection URI in case the lib needs access to database */
   databaseUri: string
 
@@ -34,7 +38,8 @@ export interface oAuthPluginOptions extends StrategyOptions {
   /** Map an authentication result to a user */
   userinfo: (
     accessToken: string,
-    refreshToken?: string
+    refreshToken?: string,
+    req?: Request
   ) => Promise<{
     /** Unique identifier for the linked account */
     sub: string
@@ -73,6 +78,19 @@ export interface oAuthPluginOptions extends StrategyOptions {
   successRedirect?: string
 }
 
+export interface oAuthPluginOptions
+  extends BaseOAuthPluginOptions,
+    StrategyOptions {}
+
+export interface oAuthPluginOptionsWithRequest
+  extends BaseOAuthPluginOptions,
+    StrategyOptionsWithRequest {
+  /**
+   * With this option enabled, req will be passed as the first argument to the verify callback.
+   * @default true
+   */
+  passReqToCallback: true
+}
 export type ButtonProps = {
   /** Path that initiates the oAuth flow */
   authorizePath: string
