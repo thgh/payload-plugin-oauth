@@ -161,7 +161,7 @@ function oAuthPluginServer(
       let users: PaginatedDocs<User>
       try {
         // Get the userinfo
-        info = await options.userinfo?.(accessToken)
+        info = await options.userinfo?.(accessToken, refreshToken)
         if (!info) throw new Error('Failed to get userinfo')
 
         // Match existing user

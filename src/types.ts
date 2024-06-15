@@ -32,7 +32,10 @@ export interface oAuthPluginOptions extends StrategyOptions {
   authorizePath?: string
 
   /** Map an authentication result to a user */
-  userinfo: (accessToken: string) => Promise<{
+  userinfo: (
+    accessToken: string,
+    refreshToken?: string
+  ) => Promise<{
     /** Unique identifier for the linked account */
     sub: string
     /** Unique identifier for the linked account */
