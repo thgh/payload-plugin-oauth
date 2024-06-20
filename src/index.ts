@@ -175,12 +175,14 @@ function oAuthPluginServer(
 
         if (users.docs && users.docs.length) {
           user = users.docs[0]
-          user = await payload.update({
-            collection: collectionSlug,
-            id: user.id,
-            data: info,
-            showHiddenFields: true,
-          })
+          if (options.updateOnLogin) {
+            user = await payload.update({
+              collection: collectionSlug,
+              id: user.id,
+              data: info,
+              showHiddenFields: true,
+            })
+          }
           user.collection = collectionSlug
           user._strategy = strategyName
         } else {
