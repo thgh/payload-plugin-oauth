@@ -71,6 +71,12 @@ export interface oAuthPluginOptions extends StrategyOptions {
    * @default /admin
    */
   successRedirect?: string
+
+  /**
+   * Boolean to allow updating users on login
+   * @default false
+   */
+  updateOnLogin?: boolean
 }
 
 export type ButtonProps = {
