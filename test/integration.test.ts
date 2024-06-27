@@ -68,7 +68,7 @@ function getPayloadServer(oauth) {
   beforeAll(async () => {
     await oauth.ready
     await new Promise<string>((resolve) => {
-      const dev = spawn('bun', ['server.ts'], {
+      const dev = spawn('node', ['server.js'], {
         stdio: 'pipe',
         cwd: __dirname + '/payload',
         env: {

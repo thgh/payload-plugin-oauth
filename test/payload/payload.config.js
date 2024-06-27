@@ -1,9 +1,13 @@
-import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { slateEditor } from '@payloadcms/richtext-slate'
-import { buildConfig } from 'payload/config'
-import { oAuthPlugin } from '../../src/index'
+// import { mongooseAdapter } from '@payloadcms/db-mongodb'
+// import { slateEditor } from '@payloadcms/richtext-slate'
+// import { buildConfig } from 'payload/config'
+// import { oAuthPlugin } from '../../src/index'
+const { mongooseAdapter } = require('@payloadcms/db-mongodb')
+const { slateEditor } = require('@payloadcms/richtext-slate')
+const { buildConfig } = require('payload/config')
+const { oAuthPlugin } = require('../..')
 
-export default buildConfig({
+module.exports = buildConfig({
   admin: {
     disable: true,
   },
