@@ -6,6 +6,7 @@ import passport from 'passport'
 import OAuth2Strategy, { VerifyCallback } from 'passport-oauth2'
 import debug from 'debug'
 import payload from 'payload'
+import { Request } from 'express'
 import { Config } from 'payload/config'
 import {
   Field,
@@ -14,13 +15,13 @@ import {
 } from 'payload/dist/fields/config/types'
 import { PaginatedDocs } from 'payload/dist/database/types'
 import getCookieExpiration from 'payload/dist/utilities/getCookieExpiration'
-import { TextField } from 'payload/types'
+import { PayloadRequest, TextField } from 'payload/types'
 
 import OAuthButton from './OAuthButton'
-import type { oAuthPluginOptions } from './types'
+import type { oAuthPluginOptions, oAuthPluginOptionsWithRequest } from './types'
 import { createElement } from 'react'
 
-export { OAuthButton, oAuthPluginOptions }
+export { OAuthButton, oAuthPluginOptions, oAuthPluginOptionsWithRequest }
 
 interface User {
   id: string | number
@@ -62,7 +63,7 @@ const CLIENTSIDE = typeof session !== 'function'
  * ```
  */
 export const oAuthPlugin =
-  (options: oAuthPluginOptions) =>
+  (options: oAuthPluginOptions | oAuthPluginOptionsWithRequest) =>
   (incoming: Config): Config => {
     // Shorthands
     const collectionSlug = options.userCollection?.slug || 'users'
@@ -95,7 +96,7 @@ export const oAuthPlugin =
 
 function oAuthPluginClient(
   incoming: Config,
-  options: oAuthPluginOptions
+  options: oAuthPluginOptions | oAuthPluginOptionsWithRequest
 ): Config {
   const button = options.components?.Button ?? OAuthButton
   return button
@@ -120,7 +121,7 @@ function oAuthPluginClient(
 
 function oAuthPluginServer(
   incoming: Config,
-  options: oAuthPluginOptions
+  options: oAuthPluginOptions | oAuthPluginOptionsWithRequest
 ): Config {
   // Shorthands
   const callbackPath =
@@ -145,14 +146,14 @@ function oAuthPluginServer(
       throw new Error(
         `Choose a unique callbackPath for oAuth strategy ${oAuthStrategyCount} (not ${options.callbackPath})`
       )
-
-    // Passport strategy
-    const strategy = new OAuth2Strategy(options, async function (
+    async function verifyCallback(
       accessToken: string,
       refreshToken: string,
       profile: {},
-      cb: VerifyCallback
-    ) {
+      cb: VerifyCallback,
+      options: any, // Adjust type of options as needed
+      req?: Request // Optional request parameter
+    ): Promise<any> {
       let info: {
         sub: string
         email?: string
@@ -161,9 +162,10 @@ function oAuthPluginServer(
       }
       let user: User & { collection?: any; _strategy?: any }
       let users: PaginatedDocs<User>
+
       try {
         // Get the userinfo
-        info = await options.userinfo?.(accessToken, refreshToken)
+        info = await options.userinfo?.(accessToken, refreshToken, req)
         if (!info) throw new Error('Failed to get userinfo')
 
         // Match existing user
@@ -173,7 +175,20 @@ function oAuthPluginServer(
           showHiddenFields: true,
         })
 
-        if (users.docs && users.docs.length) {
+        // Connect user to current login profile if already authenticated
+        if (req?.user && (req as PayloadRequest).user.id) {
+          await payload.update({
+            collection: collectionSlug,
+            id: (req as PayloadRequest).user.id,
+            data: {
+              ...info,
+              showHiddenFields: true,
+            },
+          })
+          log('connect.user', req.user)
+          return cb(null, req.user)
+        } else if (users.docs && users.docs.length) {
+          // User exists
           user = users.docs[0]
           if (options.updateOnLogin) {
             user = await payload.update({
@@ -206,8 +221,38 @@ function oAuthPluginServer(
         log('signin.fail', error.message, error.trace)
         cb(error)
       }
-    })
+    }
 
+    // Passport strategy
+    let strategy: OAuth2Strategy
+
+    if ('passReqToCallback' in options && options.passReqToCallback) {
+      strategy = new OAuth2Strategy(options, async function (
+        req: Request,
+        accessToken: string,
+        refreshToken: string,
+        profile: {},
+        cb: VerifyCallback
+      ) {
+        await verifyCallback(
+          accessToken,
+          refreshToken,
+          profile,
+          cb,
+          options,
+          req
+        )
+      })
+    } else {
+      strategy = new OAuth2Strategy(options, async function (
+        accessToken: string,
+        refreshToken: string,
+        profile: {},
+        cb: VerifyCallback
+      ) {
+        await verifyCallback(accessToken, refreshToken, profile, cb, options)
+      })
+    }
     // Alternative?
     // strategy.userProfile = async (accessToken, cb) => {
     //   const user = await options.userinfo?.(accessToken)
