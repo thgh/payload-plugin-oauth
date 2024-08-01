@@ -8,7 +8,7 @@
     "clean": "rm -rf dist",
     "build": "tsc",
     "fix": "npx prettier src --write",
-    "prepare": "yarn fix && yarn clean && yarn build",
+    "prepare": "npm run fix && npm run clean && npm run build",
     "test": "vitest"
   },
   "exports": {
