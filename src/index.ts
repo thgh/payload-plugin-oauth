@@ -132,6 +132,19 @@ function oAuthPluginServer(
   const sub = options.subField?.name || 'sub'
   const oAuthStrategyCount = (incoming.custom?.oAuthStrategyCount || 0) + 1
   const strategyName = `oauth2-${oAuthStrategyCount}`
+  const sessionMiddleware = session(
+    options.sessionOptions ?? {
+      resave: false,
+      saveUninitialized: false,
+      secret:
+        process.env.PAYLOAD_SECRET ||
+        log('Missing process.env.PAYLOAD_SECRET') ||
+        'unsafe',
+      store: options.databaseUri
+        ? MongoStore.create({ mongoUrl: options.databaseUri })
+        : undefined,
+    }
+  )
 
   if (options.clientID) {
     // Validate paths, they must be unique
@@ -256,25 +269,19 @@ function oAuthPluginServer(
         path: authorizePath,
         method: 'get',
         root: true,
+        handler: sessionMiddleware,
+      },
+      {
+        path: authorizePath,
+        method: 'get',
+        root: true,
         handler: passport.authenticate(strategyName),
       },
       {
         path: callbackPath,
         method: 'get',
         root: true,
-        handler: session(
-          options.sessionOptions ?? {
-            resave: false,
-            saveUninitialized: false,
-            secret:
-              process.env.PAYLOAD_SECRET ||
-              log('Missing process.env.PAYLOAD_SECRET') ||
-              'unsafe',
-            store: options.databaseUri
-              ? MongoStore.create({ mongoUrl: options.databaseUri })
-              : undefined,
-          }
-        ),
+        handler: sessionMiddleware,
       },
       {
         path: callbackPath,
