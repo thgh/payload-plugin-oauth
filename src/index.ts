@@ -266,10 +266,7 @@ function oAuthPluginServer(
           options.sessionOptions ?? {
             resave: false,
             saveUninitialized: false,
-            secret:
-              process.env.PAYLOAD_SECRET ||
-              log('Missing process.env.PAYLOAD_SECRET') ||
-              'unsafe',
+            secret: payload.secret,
             store: options.databaseUri
               ? MongoStore.create({ mongoUrl: options.databaseUri })
               : undefined,
