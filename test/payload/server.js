@@ -18,7 +18,7 @@ payload.init({
         name: 'existing',
       },
     })
-    const server = app.listen(0, () =>
+    const server = app.listen(+process.env.PORT || 0, () =>
       console.log(`http://localhost:${server.address().port}`)
     )
   },

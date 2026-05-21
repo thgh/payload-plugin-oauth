@@ -21,7 +21,9 @@ module.exports = buildConfig({
   ],
   plugins: [
     oAuthPlugin({
+      state: process.env.OAUTH_STATE === 'true',
       authorizationURL: process.env.AUTHORIZATION_URL,
+      callbackURL: process.env.CALLBACK_URL,
       tokenURL: process.env.TOKEN_URL,
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,

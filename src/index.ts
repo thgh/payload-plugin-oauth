@@ -132,16 +132,30 @@ function oAuthPluginServer(
   const sub = options.subField?.name || 'sub'
   const oAuthStrategyCount = (incoming.custom?.oAuthStrategyCount || 0) + 1
   const strategyName = `oauth2-${oAuthStrategyCount}`
-  const sessionMiddleware = session(
-    options.sessionOptions ?? {
-      resave: false,
-      saveUninitialized: false,
-      secret: payload.secret,
-      store: options.databaseUri
-        ? MongoStore.create({ mongoUrl: options.databaseUri })
-        : undefined,
-    }
-  )
+
+  let _sessionMiddleware: ReturnType<typeof session>
+
+  const sessionMiddleware: ReturnType<typeof session> = options.sessionOptions
+    ? session(options.sessionOptions)
+    : async (req, res, next) => {
+        if (!_sessionMiddleware) {
+          while (!payload.secret) {
+            console.log(
+              'oauthPluginServer: waiting for payload.secret to be set'
+            )
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+          }
+          _sessionMiddleware = session({
+            resave: false,
+            saveUninitialized: false,
+            secret: payload.secret,
+            store: options.databaseUri
+              ? MongoStore.create({ mongoUrl: options.databaseUri })
+              : undefined,
+          })
+        }
+        return _sessionMiddleware(req, res, next)
+      }
 
   if (options.clientID) {
     // Validate paths, they must be unique

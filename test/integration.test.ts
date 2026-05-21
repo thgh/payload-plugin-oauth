@@ -7,6 +7,50 @@ import { spawn } from 'node:child_process'
 const oauth = getOAuthProvider()
 const app = getPayloadServer(oauth)
 
+const oauth2 = getOAuthProvider()
+const app2 = getPayloadServer(oauth2, { state: true })
+
+test('sign in with state param', async () => {
+  expect(app2.url).toMatch(/http:\/\/localhost:\d+/)
+
+  const authorize = await axios.get(app2.url + '/oauth2/authorize', {
+    validateStatus: () => true,
+    maxRedirects: 0,
+  })
+  expect(authorize.status).toBe(302)
+  const cookies = getCookies(authorize.headers['set-cookie'])
+  expect(cookies).toBeTruthy()
+
+  const oauthAuthorize = authorize.headers.location
+  expect(oauthAuthorize).toMatch(new RegExp('^' + oauth2.url + '/authorize'))
+  const state = new URL(oauthAuthorize).searchParams.get('state')
+  expect(state).toBeTruthy()
+
+  const callbackResponse = await axios.get(oauthAuthorize, {
+    validateStatus: () => true,
+    maxRedirects: 0,
+  })
+  const callback = callbackResponse.headers.location
+  expect(callback).toMatch(/http:\/\/localhost:\d+\/callback/)
+  expect(new URL(callback).searchParams.get('code')).toBe('testCode')
+  expect(new URL(callback).searchParams.get('state')).toBe(state)
+
+  const done = await axios.get(callback, {
+    validateStatus: () => true,
+    maxRedirects: 0,
+    headers: { Cookie: cookies },
+  })
+  expect(done.status, callback).toBe(302)
+  expect(done.headers.location).toBe('/admin')
+
+  const decoded = decodePayloadToken(done.headers['set-cookie'])
+  expect(decoded).toMatchObject({
+    email: 'test@example.org',
+    name: 'existing',
+    collection: 'users',
+  })
+})
+
 test('basic sign in', async () => {
   // Sanity check
   expect(app.url).toMatch(/http:\/\/localhost:\d+/)
@@ -16,7 +60,7 @@ test('basic sign in', async () => {
     oauth.url +
     '/authorize?' +
     new URLSearchParams({
-      redirect_uri: app.url + '/oauth2/callback',
+      redirect_uri: app.url + '/callback',
       response_type: 'code',
       client_id: 'client_id',
     }).toString()
@@ -27,7 +71,7 @@ test('basic sign in', async () => {
   const callback = callbackResponse.headers.location
 
   // Authorize should redirect to callback URL with code
-  expect(callback).toMatch(/http:\/\/localhost:\d+\/oauth2\/callback/)
+  expect(callback).toMatch(/http:\/\/localhost:\d+\/callback/)
   const code = new URL(callback).searchParams.get('code')
   expect(code).toBe('testCode')
 
@@ -39,16 +83,7 @@ test('basic sign in', async () => {
   expect(done.status, callback).toBe(302)
   expect(done.headers.location).toBe('/admin')
 
-  // Validate cookie contents
-  let decoded: any = {}
-  try {
-    decoded = done.headers['set-cookie']
-    decoded = decoded.find((c) => c.startsWith('payload-token='))
-    decoded = decoded.split(';')[0].split('=')[1].split('.')[1]
-    decoded = JSON.parse(Buffer.from(decoded, 'base64').toString())
-  } catch (error) {
-    console.log('decoded', decoded)
-  }
+  const decoded = decodePayloadToken(done.headers['set-cookie'])
   expect(decoded).toMatchObject({
     email: 'test@example.org',
     name: 'existing',
@@ -56,7 +91,8 @@ test('basic sign in', async () => {
   })
 })
 
-function getPayloadServer(oauth) {
+function getPayloadServer(oauth, options?: { state?: boolean }) {
+  const port = Math.floor(Math.random() * 50000) + 10000
   const ctx: {
     url: string
     process: ReturnType<typeof spawn>
@@ -73,12 +109,15 @@ function getPayloadServer(oauth) {
         cwd: __dirname + '/payload',
         env: {
           ...process.env,
+          PORT: '' + port,
           DEBUG: 'plugin:oauth:*',
           CLIENT_ID: 'client_id',
           CLIENT_SECRET: 'client_secret',
           AUTHORIZATION_URL: oauth.url + '/authorize',
+          CALLBACK_URL: 'http://localhost:' + port + '/callback',
           TOKEN_URL: oauth.url + '/token',
           USERINFO_URL: oauth.url + '/userinfo',
+          OAUTH_STATE: options?.state ? 'true' : '',
         },
       })
       dev.stdout.setEncoding('utf8')
@@ -142,7 +181,9 @@ function getOAuthProvider() {
           return res
             .status(400)
             .json({ error: 'invalid_redirect_uri', query: req.query })
-        const to = req.query.redirect_uri + '?code=testCode'
+        const params = new URLSearchParams({ code: 'testCode' })
+        if (req.query.state) params.set('state', String(req.query.state))
+        const to = req.query.redirect_uri + '?' + params.toString()
         // console.log('authorize.redirect', to)
         res.redirect(to)
       })
@@ -186,4 +227,19 @@ function getOAuthProvider() {
   })
 
   return ctx
+}
+
+function getCookies(setCookie: string[] | undefined) {
+  if (!setCookie?.length) return ''
+  return setCookie.map((c) => c.split(';')[0]).join('; ')
+}
+
+function decodePayloadToken(setCookie: string[] | undefined) {
+  const token = setCookie
+    ?.find((c) => c.startsWith('payload-token='))
+    ?.split(';')[0]
+    .split('=')[1]
+    .split('.')[1]
+  if (!token) return {}
+  return JSON.parse(Buffer.from(token, 'base64').toString())
 }
